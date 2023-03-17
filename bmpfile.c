@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "bmpfile.h"
 
 typedef unsigned char  uint8_t;
@@ -117,7 +118,7 @@ void bmp_free(BMP *pb)
 void bmp_setpixel(BMP *pb, int x, int y, int r, int g, int b)
 {
     uint8_t *pbyte = pb->pdata;
-    if (x >= pb->width || y >= pb->height) return;
+    if (x < 0 || x >= pb->width || y < 0 || y >= pb->height) return;
     r = r < 0 ? 0 : r < 255 ? r : 255;
     g = g < 0 ? 0 : g < 255 ? g : 255;
     b = b < 0 ? 0 : b < 255 ? b : 255;
@@ -129,7 +130,7 @@ void bmp_setpixel(BMP *pb, int x, int y, int r, int g, int b)
 void bmp_getpixel(BMP *pb, int x, int y, int *r, int *g, int *b)
 {
     uint8_t *pbyte = pb->pdata;
-    if (x >= pb->width || y >= pb->height) {
+    if (x < 0 || x >= pb->width || y < 0 || y >= pb->height) {
         *r = *g = *b = 0;
         return;
     }
@@ -140,9 +141,8 @@ void bmp_getpixel(BMP *pb, int x, int y, int *r, int *g, int *b)
 
 int main(int argc, char *argv[])
 {
-    BMP bmp24 = {};
-    BMP bmp32 = {};
-    int x, y, r, g, b;
+    BMP  bmp24 = {}, bmp32 = {};
+    int  x = 0, y = 0, r, g, b, i, j;
     char file[256];
 
     if (argc < 2) {
@@ -156,22 +156,29 @@ int main(int argc, char *argv[])
     bmp_load(&bmp24, argv[1]);
     bmp32.width  = bmp24.width;
     bmp32.height = bmp24.height;
+    snprintf(file, sizeof(file), "%s.32", argv[1]);
+
+    for (i = 2; i < argc; i++) {
+        if      (strstr(argv[i], "--srcx=") == argv[i]) x = atoi(argv[i] + 7);
+        else if (strstr(argv[i], "--srcy=") == argv[i]) y = atoi(argv[i] + 7);
+        else if (strstr(argv[i], "--srcw=") == argv[i]) bmp32.width  = atoi(argv[i] + 7);
+        else if (strstr(argv[i], "--srch=") == argv[i]) bmp32.height = atoi(argv[i] + 7);
+        else if (strstr(argv[i], "--out=" ) == argv[i]) strncpy(file, argv[i] + 6, sizeof(file));
+    }
+
     bmp32.cdepth = 32;
     bmp_create(&bmp32);
 
-    for (y=0; y<bmp24.height; y++) {
-        for (x=0; x<bmp24.width; x++) {
-            bmp_getpixel(&bmp24, x, y, &r, &g, &b);
-            bmp_setpixel(&bmp32, x, y,  r,  g,  b);
+    for (i = 0; i < bmp32.height; i++) {
+        for (j = 0; j < bmp32.width; j++) {
+            bmp_getpixel(&bmp24, x + j, y + i, &r, &g, &b);
+            bmp_setpixel(&bmp32, 0 + j, 0 + i,  r,  g,  b);
         }
     }
 
-    snprintf(file, sizeof(file), "%s.32", argv[1]);
     bmp_save(&bmp32, file);
-
     bmp_free(&bmp24);
     bmp_free(&bmp32);
 }
-
 
 
